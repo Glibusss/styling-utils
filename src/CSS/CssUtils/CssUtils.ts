@@ -1,5 +1,10 @@
 type BreakpointAliases = "xs" | "sm" | "md" | "lg" | "xl";
 
+type BreakpointRange = {
+  min?: number | BreakpointAliases;
+  max?: number | BreakpointAliases;
+};
+
 const DEFAULT_BREAKPOINTS: Record<BreakpointAliases, number> = {
   xs: 0,
   sm: 576,
@@ -270,50 +275,85 @@ export class CssUtils {
   }
 
   /**
-   * Generate a simple min-width media query string.
+   * Generate a media query string from a single value or range.
    *
-   * @param query - Breakpoint value in pixels or alias ('xs' | 'sm' | 'md' | 'lg' | 'xl').
-   * @returns A string with the CSS media query, e.g., "@media (min-width: 768px)".
+   * @param query - Can be:
+   *   - number: min-width in pixels
+   *   - alias: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+   *   - object: { min?: number | alias, max?: number | alias } for range queries
+   * @returns A string with the CSS media query.
    *
    * @example
    * CssUtils.mediaQuery(768); // "@media (min-width: 768px)"
    * CssUtils.mediaQuery('sm'); // "@media (min-width: 576px)"
+   * CssUtils.mediaQuery({ min: 'sm', max: 'lg' }); // "@media (min-width: 576px) and (max-width: 992px)"
    */
-  static mediaQuery(query: number | BreakpointAliases): string {
-    const value =
-      typeof query === "string" && query in DEFAULT_BREAKPOINTS
-        ? DEFAULT_BREAKPOINTS[query]
-        : Number(query);
-    return `@media (min-width: ${value}px)`;
+  static mediaQuery(
+    query: number | BreakpointAliases | BreakpointRange
+  ): string {
+    if (typeof query === "number") return `@media (min-width: ${query}px)`;
+    if (typeof query === "string") {
+      const value = DEFAULT_BREAKPOINTS[query as BreakpointAliases] ?? 0;
+      return `@media (min-width: ${value}px)`;
+    }
+    if (typeof query === "object") {
+      const min =
+        query.min != null
+          ? typeof query.min === "string"
+            ? DEFAULT_BREAKPOINTS[query.min as BreakpointAliases]
+            : query.min
+          : null;
+      const max =
+        query.max != null
+          ? typeof query.max === "string"
+            ? DEFAULT_BREAKPOINTS[query.max as BreakpointAliases]
+            : query.max
+          : null;
+      const parts: string[] = [];
+      if (min != null) parts.push(`(min-width: ${min}px)`);
+      if (max != null) parts.push(`(max-width: ${max}px)`);
+      return `@media ${parts.join(" and ")}`;
+    }
+    throw new Error(`Invalid media query: ${JSON.stringify(query)}`);
   }
 
   /**
    * Generate responsive CSS from breakpoints.
-   * All style objects automatically pass through `autoPrefix`.
+   * Automatically applies vendor prefixes to all style properties.
+   * Supports simple aliases, pixel values, or JSON-string ranges for min/max widths.
    *
-   * @param breakpoints - An object where keys are breakpoint aliases or pixel values,
-   *                       and values are objects of CSS properties.
-   * @returns A string containing the generated CSS with media queries and vendor prefixes.
+   * @param breakpoints - An object where:
+   *   - Key: a breakpoint identifier, which can be:
+   *       - a string alias ('xs', 'sm', 'md', 'lg', 'xl')
+   *       - a numeric value in pixels
+   *       - a JSON string representing a range, e.g. '{"min":"sm","max":"lg"}'
+   *   - Value: an object of CSS properties, e.g. { fontSize: '14px', transform: 'rotate(10deg)' }
+   * @returns A string containing CSS with media queries and vendor-prefixed properties.
    *
    * @example
    * const css = CssUtils.responsive({
-   *   sm: { transform: 'rotate(20deg)', userSelect: 'none', fontSize: '14px' },
-   *   md: { transform: 'rotate(0deg)', fontSize: '16px' }
+   *   sm: { fontSize: '14px', transform: 'rotate(10deg)' },
+   *   md: { fontSize: '16px', transform: 'rotate(0deg)' },
+   *   '{"min":"sm","max":"lg"}': { color: 'blue', boxShadow: '0 0 5px rgba(0,0,0,0.3)' }
    * });
    *
-   * // Result:
-   * // "@media (min-width: 576px) { transform: rotate(20deg); WebkitTransform: rotate(20deg); ... font-size: 14px; }
-   * //  @media (min-width: 768px) { transform: rotate(0deg); WebkitTransform: rotate(0deg); ... font-size: 16px; }"
+   * // Output:
+   * // "@media (min-width: 576px) { font-size: 14px; transform: rotate(10deg); WebkitTransform: rotate(10deg); ... }"
+   * // "@media (min-width: 768px) { font-size: 16px; transform: rotate(0deg); WebkitTransform: rotate(0deg); ... }"
+   * // "@media (min-width: 576px) and (max-width: 992px) { color: blue; box-shadow: 0 0 5px rgba(0,0,0,0.3); WebkitBoxShadow: ... }"
    */
   static responsive(
-    breakpoints: Record<
-      number | BreakpointAliases,
-      Record<string, string | number>
-    >
+    breakpoints: Record<string, Record<string, string | number>>
   ): string {
     let css = "";
     for (const [bp, styles] of Object.entries(breakpoints)) {
-      const query = CssUtils.mediaQuery(bp as number | BreakpointAliases);
+      const key: number | BreakpointAliases | BreakpointRange = bp.startsWith(
+        "{"
+      )
+        ? JSON.parse(bp)
+        : (bp as any);
+
+      const query = CssUtils.mediaQuery(key);
       const prefixedStyles = CssUtils.autoPrefix(styles);
       const styleString = Object.entries(prefixedStyles)
         .map(([k, v]) => `${CssUtils.camelToKebab(k)}: ${v};`)
