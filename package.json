@@ -1,0 +1,24 @@
+{
+  "name": "styling-utils",
+  "version": "0.1.0",
+  "description": "utils for comfortable styling in css using js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "css",
+    "style",
+    "utils",
+    "typescript",
+    "frontend"
+  ],
+  "author": "glibusss expansifff@gmail.com",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
