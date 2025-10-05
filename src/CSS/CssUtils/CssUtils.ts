@@ -362,4 +362,30 @@ export class CssUtils {
     }
     return css;
   }
+
+  /**
+   * Apply auto-prefixes to a raw CSS string.
+   * It parses known properties and prepends vendor prefixes where needed.
+   *
+   * @param css - Raw CSS string.
+   * @returns Prefixed CSS string.
+   *
+   * @example
+   * CssUtils.autoPrefixString("transform: rotate(20deg);");
+   * // "transform: rotate(20deg); -webkit-transform: rotate(20deg); -moz-transform: rotate(20deg); ..."
+   */
+  static autoPrefixString(css: string): string {
+    const properties = ["transform", "transition", "boxShadow", "userSelect"];
+    const vendors = ["-webkit-", "-moz-", "-ms-"];
+    let result = css;
+
+    for (const prop of properties) {
+      const regex = new RegExp(`\\b${prop}\\b`, "g");
+      for (const vendor of vendors) {
+        result = result.replace(regex, `${vendor}${prop}`);
+      }
+    }
+
+    return result;
+  }
 }
