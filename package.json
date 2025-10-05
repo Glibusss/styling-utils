@@ -1,6 +1,6 @@
 {
   "name": "styling-utils",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "utils for comfortable styling in css using js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
